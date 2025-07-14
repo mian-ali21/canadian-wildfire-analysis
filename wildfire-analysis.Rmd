@@ -1,0 +1,926 @@
+---
+title: "Forest-Fire"
+output: pdf_document
+date: "2024-10-15"
+---
+
+```{r}
+library(forecast)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+setwd("~/Desktop")
+rm(list = ls())
+```
+
+```{r}
+Area.burned.Fire.cause<- read.csv("~/Downloads/NFD - Area burned by cause class - EN FR.csv", header=FALSE, comment.char="#")
+
+Area.size.burned <- read.csv("~/Downloads/NFD - Area burned by fire size class - EN FR.csv", header=FALSE, comment.char="#")
+
+Area.burned.month <- read.csv("~/Downloads/NFD - Area burned by month - EN FR.csv", header=FALSE, comment.char="#")
+
+Number.of.fires.cause <- read.csv("~/Downloads/NFD - Number of fires by cause class - EN FR.csv", header=FALSE, comment.char="#")
+
+Number.of.fires.size <- read.csv("~/Downloads/NFD - Number of fires by fire size class - EN FR.csv", header=FALSE, comment.char="#")
+
+Number.of.fires.month <- read.csv("~/Downloads/NFD - Number of fires by month - EN FR.csv", header=FALSE, comment.char="#")
+
+Property.losses.from.fires <- read.csv("~/Downloads/NFD - Property losses from fires - EN FR.csv", header=FALSE, comment.char="#")
+```
+
+```{r}
+Area.burned.Fire.cause<- Area.burned.Fire.cause[,c(1,3,4,6,8,9)]
+colnames(Area.burned.Fire.cause) <- Area.burned.Fire.cause[1, ]
+Area.burned.Fire.cause <- Area.burned.Fire.cause[-1, ]
+
+str(Area.burned.Fire.cause)
+
+colnames(Area.burned.Fire.cause)[2] <- "Abb. Province"
+colnames(Area.burned.Fire.cause)[3] <- "Province"
+
+Area.burned.Fire.cause$`Area (hectares)` <- as.numeric(Area.burned.Fire.cause$`Area (hectares)`)
+Area.burned.Fire.cause$`Abb. Province` <- as.factor(Area.burned.Fire.cause$`Abb. Province`)
+Area.burned.Fire.cause$Province <- as.factor(Area.burned.Fire.cause$Province)
+
+Area.burned.Fire.cause$`Data Qualifier` <- as.factor(Area.burned.Fire.cause$`Data Qualifier`)
+Area.burned.Fire.cause$Cause <- as.factor(Area.burned.Fire.cause$Cause)
+
+```
+
+```{r}
+Area.burned.month<- Area.burned.month[,c(1,3,4,6,8,9)]
+colnames(Area.burned.month) <- Area.burned.month[1, ]
+Area.burned.month <- Area.burned.month[-1, ]
+
+str(Area.burned.month)
+
+colnames(Area.burned.month)[2] <- "Abb. Province"
+colnames(Area.burned.month)[3] <- "Province"
+
+Area.burned.month$`Area (hectares)` <- as.numeric(Area.burned.month$`Area (hectares)`)
+
+Area.burned.month$`Abb. Province` <- as.factor(Area.burned.month$`Abb. Province`)
+
+Area.burned.month$Province <- as.factor(Area.burned.month$Province)
+
+Area.burned.month$Month <- as.factor(Area.burned.month$Month)
+
+Area.burned.month$`Data Qualifier` <- as.factor(Area.burned.month$`Data Qualifier`)
+
+```
+
+```{r}
+
+Area.size.burned<- Area.size.burned[,c(1,3,4,6,8,9)]
+colnames(Area.size.burned) <- Area.size.burned[1, ]
+Area.size.burned <- Area.size.burned[-1, ]
+
+
+str(Area.size.burned)
+
+colnames(Area.size.burned)[2] <- "Abb. Province"
+colnames(Area.size.burned)[3] <- "Province"
+
+Area.size.burned$`Area (hectares)` <- as.numeric(Area.size.burned$`Area (hectares)`)
+
+Area.size.burned$`Abb. Province` <- as.factor(Area.size.burned$`Abb. Province`)
+
+Area.size.burned$Province <- as.factor(Area.size.burned$Province)
+
+Area.size.burned$`Fire size class` <- as.factor(Area.size.burned$`Fire size class`)
+
+
+Area.size.burned$`Data Qualifier` <- as.factor(Area.size.burned$`Data Qualifier`)
+
+table(Area.size.burned$`Fire size class`)
+
+Area.size.burned$`Fire size class` <- as.character(Area.size.burned$`Fire size class`)
+
+split_data <- strsplit(Area.size.burned$`Fire size class`, " ha")
+
+Area.size.burned$`Fire size class (ha)` <- sapply(split_data, function(x) x[1])
+Area.size.burned$Unit <- "ha"  
+
+Area.size.burned<- Area.size.burned[,-c(4,8)]
+
+Area.size.burned$`Fire size class (ha)` <- as.factor(Area.size.burned$`Fire size class (ha)`)
+```
+
+
+```{r}
+Number.of.fires.cause<- Number.of.fires.cause[,c(1,3,4,6,8,9)]
+colnames(Number.of.fires.cause) <- Number.of.fires.cause[1, ]
+Number.of.fires.cause <- Number.of.fires.cause[-1, ]
+
+str(Number.of.fires.cause)
+
+colnames(Number.of.fires.cause)[2] <- "Abb. Province"
+colnames(Number.of.fires.cause)[3] <- "Province"
+
+Number.of.fires.cause$Cause <- as.factor(Number.of.fires.cause$Cause)
+
+Number.of.fires.cause$`Abb. Province` <- as.factor(Number.of.fires.cause$`Abb. Province`)
+
+Number.of.fires.cause$Province <- as.factor(Number.of.fires.cause$Province)
+
+Number.of.fires.cause$Number <- as.numeric(Number.of.fires.cause$Number)
+
+Number.of.fires.cause$`Data Qualifier` <- as.factor(Number.of.fires.cause$`Data Qualifier`)
+
+Number.of.fires.cause$Cause <- as.factor(Number.of.fires.cause$Cause)
+
+```
+
+```{r}
+Number.of.fires.month<- Number.of.fires.month[,c(1,3,4,6,8,9)]
+
+colnames(Number.of.fires.month) <- Number.of.fires.month[1, ]
+Number.of.fires.month <- Number.of.fires.month[-1, ]
+
+str(Number.of.fires.month)
+
+colnames(Number.of.fires.month)[2] <- "Abb. Province"
+colnames(Number.of.fires.month)[3] <- "Province"
+
+Number.of.fires.month$`Abb. Province` <- as.factor(Number.of.fires.month$`Abb. Province`)
+Number.of.fires.month$Province <- as.factor(Number.of.fires.month$Province)
+
+
+Number.of.fires.month$`Data Qualifier` <- as.factor(Number.of.fires.month$`Data Qualifier`)
+Number.of.fires.month$Month <- as.factor(Number.of.fires.month$Month)
+
+Number.of.fires.month$Number <- as.numeric(Number.of.fires.month$Number)
+
+```
+```{r}
+Number.of.fires.size<- Number.of.fires.size[,c(1,3,4,6,8,9)]
+colnames(Number.of.fires.size) <- Number.of.fires.size[1, ]
+Number.of.fires.size <- Number.of.fires.size[-1, ]
+
+str(Number.of.fires.size)
+
+colnames(Number.of.fires.size)[2] <- "Abb. Province"
+colnames(Number.of.fires.size)[3] <- "Province"
+
+Number.of.fires.size$`Abb. Province` <- as.factor(Number.of.fires.size$`Abb. Province`)
+
+Number.of.fires.size$Province <- as.factor(Number.of.fires.size$Province)
+
+Number.of.fires.size$Number <- as.numeric(Number.of.fires.size$Number)
+
+
+table(Number.of.fires.size$`Data Qualifier`)
+
+Number.of.fires.size$`Data Qualifier` <- as.factor(Number.of.fires.size$`Data Qualifier`)
+
+split_data1 <- strsplit(Number.of.fires.size$`Fire size class`, " ha")
+
+Number.of.fires.size$`Fire size class (ha)` <- sapply(split_data1, function(x) x[1])
+Number.of.fires.size$Unit <- "ha"  
+
+Number.of.fires.size<- Number.of.fires.size[,-c(4,8)]
+
+Number.of.fires.size$`Fire size class (ha)` <- as.factor(Number.of.fires.size$`Fire size class (ha)`)
+```
+```{r}
+Property.losses.from.fires <- read.csv("~/Downloads/NFD - Property losses from fires - EN FR.csv", header=FALSE, comment.char="#")
+
+Property.losses.from.fires<- Property.losses.from.fires[,c(1,3,4,6,8,9)]
+colnames(Property.losses.from.fires) <- Property.losses.from.fires[1, ]
+Property.losses.from.fires <- Property.losses.from.fires[-1, ]
+
+str(Property.losses.from.fires)
+
+colnames(Property.losses.from.fires)[2] <- "Abb. Province"
+colnames(Property.losses.from.fires)[3] <- "Province"
+colnames(Property.losses.from.fires)[6] <- "Data Qualifier"
+
+table(Property.losses.from.fires$`Data Qualifier`)
+
+Property.losses.from.fires$`Abb. Province` <- as.factor(Property.losses.from.fires$`Abb. Province`)
+
+Property.losses.from.fires$Province <- as.factor(Property.losses.from.fires$Province)
+
+Property.losses.from.fires$`Dollars (En)` <- as.numeric(Property.losses.from.fires$`Dollars (En)`)
+
+Property.losses.from.fires$`Data Qualifier` <- as.factor(Property.losses.from.fires$`Data Qualifier`)
+
+Property.losses.from.fires <- na.omit(Property.losses.from.fires)
+```
+
+```{r}
+summary(Area.burned.Fire.cause)
+summary(Area.size.burned)
+summary(Area.burned.month)
+summary(Number.of.fires.cause)
+summary(Number.of.fires.month)
+summary(Number.of.fires.size)
+summary(Property.losses.from.fires)
+```
+
+```{R}
+sum(is.na(Area.burned.Fire.cause))
+sum(is.na(Area.size.burned)) 
+sum(is.na(Area.burned.month)) 
+sum(is.na(Number.of.fires.cause))
+sum(is.na(Number.of.fires.month))
+sum(is.na(Number.of.fires.size))
+sum(is.na(Property.losses.from.fires))
+```
+
+```{r}
+colSums(is.na(Area.burned.Fire.cause))
+colSums(is.na(Area.size.burned))
+colSums(is.na(Area.burned.month))
+colSums(is.na(Number.of.fires.cause))
+colSums(is.na(Number.of.fires.month))
+colSums(is.na(Number.of.fires.size))
+colSums(is.na(Property.losses.from.fires))
+
+sum(duplicated(Area.burned.Fire.cause))
+sum(duplicated(Area.size.burned))
+sum(duplicated(Area.burned.month))
+sum(duplicated(Number.of.fires.cause))
+sum(duplicated(Number.of.fires.month))
+sum(duplicated(Number.of.fires.size))
+sum(duplicated(Property.losses.from.fires))
+
+```
+
+```{r}
+duplicates_Area_size_burned <- Area.size.burned[duplicated(Area.size.burned), ]
+print(duplicates_Area_size_burned)
+
+```
+```{r}
+table(Area.burned.Fire.cause$Province)
+table(Area.burned.Fire.cause$Cause)
+```
+```{r}
+table(Area.size.burned$`Fire size class (ha)`)
+```
+
+```{r}
+table(Area.burned.month$Month)
+```
+
+```{r}
+table(Number.of.fires.cause$Cause)
+```
+
+```{r}
+table(Number.of.fires.month$Month)
+```
+
+```{r}
+table(Number.of.fires.size$`Fire size class (ha)`)
+```
+
+
+```{r}
+summary(Area.burned.Fire.cause)
+str(Area.burned.Fire.cause)
+```
+
+
+```{r}
+cause_dist <- table(Area.burned.Fire.cause$Cause)
+barplot(cause_dist, main="Distribution of Fire Causes", col="lightblue")
+
+hist(Area.burned.Fire.cause$`Area (hectares)`, main="Distribution of Area Burned (hectares)", xlab="Area (hectares)", col="lightgreen", breaks=30)
+
+```
+```{r}
+extracted_data <- Area.burned.Fire.cause[, c("Cause", "Year", "Area (hectares)")]
+
+new_data1 <- data.frame(
+    Cause = c("Human activity", "Natural cause", "Prescribed burn", "Unspecified", "Unspecified"),
+    Year = c(2022, 2022, 2022, 2022, 2023),
+    `Area (hectares)` = c(1062 + 22293 + 3809 + 144 + 59 + 3357 +2288 + 19246 +13287, 
+                          142593 + 112840 + 187968 + 2 + 603950 + 1 + 270 +  10393 +     252286 , 
+                          6791 + 391 + 329 + 1 + 76 + 40 + 10, 
+                          7101 + 102 + 1 + 30 + 23890 + 23 + 25 + 68 + 170357, 
+                          1951299 + 2840830 + 189913 + 854 + 21913 + 4163438 + 25093 + 441474 + 1014742 + 8 + 4322888 + 1850829 + 373920
+    )
+)
+
+colnames(new_data1) <- colnames(extracted_data)
+
+Area.burned.Fire.cause1 <- rbind(extracted_data, new_data1)
+
+print(Area.burned.Fire.cause1)
+
+options(scipen = 999)
+
+mean_area_by_cause <- aggregate(`Area (hectares)` ~ Cause, data = Area.burned.Fire.cause1, mean, na.rm = TRUE)
+sum_area_by_cause <- aggregate(`Area (hectares)` ~ Cause, data = Area.burned.Fire.cause1, sum, na.rm = TRUE)
+
+mean_area_by_cause <- mean_area_by_cause[order(mean_area_by_cause$Cause), ]
+sum_area_by_cause <- sum_area_by_cause[order(sum_area_by_cause$Cause), ]
+
+mean_area_by_cause$`Area (millions)` <- mean_area_by_cause$`Area (hectares)` / 1e6
+sum_area_by_cause$`Area (millions)` <- sum_area_by_cause$`Area (hectares)` / 1e6
+
+```
+
+```{r}
+library(tidyr)
+
+mean_area_by_cause <- aggregate(`Area (hectares)` ~ Cause, data = Area.burned.Fire.cause, mean, na.rm = TRUE)
+sum_area_by_cause <- aggregate(`Area (hectares)` ~ Cause, data = Area.burned.Fire.cause, sum, na.rm = TRUE)
+
+mean_area_by_cause$`Area (millions)` <- mean_area_by_cause$`Area (hectares)` / 1e6
+sum_area_by_cause$`Area (millions)` <- sum_area_by_cause$`Area (hectares)` / 1e6
+
+mean_area_by_cause$Type <- "Mean Area"
+sum_area_by_cause$Type <- "Total Area"
+
+combined_area_by_cause <- bind_rows(mean_area_by_cause, sum_area_by_cause) %>%
+    select(Cause, `Area (millions)`, Type)
+
+ggplot(combined_area_by_cause, aes(x = Cause, y = `Area (millions)`, group = Type, color = Type)) +
+    geom_line(size = 1.2) + 
+    geom_point(aes(shape = Type), size = 3) + 
+    scale_color_manual(values = c("red", "orange")) +
+    scale_shape_manual(values = c(16, 17)) +
+    ggtitle("Mean and Total Area Burned by Cause (in Millions of Hectares)") +
+    xlab("Cause") +
+    ylab("Area (millions of hectares)") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 30, hjust = 1, size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1), 
+        legend.position = "top", 
+        legend.title = element_blank(), 
+        legend.text = element_text(size = 10) 
+    ) +
+    scale_y_continuous(breaks = seq(0, ceiling(max(combined_area_by_cause$`Area (millions)`) * 1.1), by = 5), 
+                       labels = scales::comma_format(suffix = "M"))
+
+
+```
+
+
+```{r}
+new_data2 <- data.frame(
+    Province = c("Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador",
+                 "Northwest Territories", "Nova Scotia", "Ontario", "Parks Canada", "Prince Edward Island",
+                 "Quebec", "Saskatchewan", "Yukon"),
+    'Area (hectares)' = c(
+        2102848, 2976455, 382021, 1030, 45803, 4767470, 28476, 444101, 1014742, 8, 4352603, 2116444, 544287
+    )
+)
+
+colnames(new_data2)[2] <- "Area (hectares)"
+
+Area.burned.month_select <- Area.burned.month %>% select(Province, `Area (hectares)`)
+updated_data2 <- rbind(Area.burned.month_select, new_data2)
+
+area_by_province <- updated_data2 %>%
+    group_by(Province) %>%
+    summarise(`Area (hectares)` = sum(`Area (hectares)`, na.rm = TRUE)) %>%
+    arrange(desc(`Area (hectares)`)) 
+
+top_8_provinces <- area_by_province %>% 
+    top_n(8, `Area (hectares)`)
+
+top_8_provinces$`Area (millions)` <- top_8_provinces$`Area (hectares)` / 1e6
+
+ggplot(top_8_provinces, aes(x = reorder(Province, -`Area (millions)`), y = `Area (millions)`)) +
+    geom_bar(stat = "identity", fill = "orange", color = "black") +
+    ggtitle("Top 8 Provinces by Total Area Burned (in Millions of Hectares)") +
+    xlab("Provinces") +
+    ylab("Area (millions of hectares)") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 30, hjust = 1, size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"),
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    scale_y_continuous(labels = scales::comma_format(suffix = "M"))
+
+
+```
+
+
+```{r}
+avg_area_by_province <- Area.burned.month %>%
+    group_by(Province) %>%
+    summarise(`Area (hectares)` = mean(`Area (hectares)`, na.rm = TRUE)) %>%
+    arrange(`Area (hectares)`)
+
+ggplot(avg_area_by_province, aes(x = reorder(Province, `Area (hectares)`), y = `Area (hectares)`)) +
+    geom_bar(stat = "identity", fill = "orange", color = "black") +
+    ggtitle("Average Area Burned per Fire by Province") +
+    xlab("Province") +
+    ylab("Average Area (hectares)") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(angle = 30, hjust = 1, size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.1))) 
+
+```
+
+```{r}
+missing_area <- sum(is.na(Area.burned.month$`Area (hectares)`))
+cat("Missing values in 'Area (hectares)':", missing_area)
+
+```
+
+```{r}
+yearly_trend <- aggregate(`Area (hectares)` ~ Year, data = Area.size.burned, sum, na.rm = TRUE)
+plot(yearly_trend$Year, yearly_trend$`Area (hectares)`, type = "o", col = "blue", main = "Total Area Burned Over Years", xlab = "Year", ylab = "Total Area (hectares)")
+
+yearly_avg <- aggregate(`Area (hectares)` ~ Year, data = Area.size.burned, mean, na.rm = TRUE)
+plot(yearly_avg$Year, yearly_avg$`Area (hectares)`, type = "o", col = "red", main = "Average Area Burned Per Year", xlab = "Year", ylab = "Average Area (hectares)")
+
+```
+```{r}
+ggplot(Area.size.burned, aes(x = `Fire size class (ha)`, fill = Province)) + 
+    geom_bar() + 
+    theme_minimal() + 
+    labs(title = "Fire Size Class Distribution by Province", x = "Fire Size Class (ha)", y = "Count") + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+high_areas <- Area.size.burned[Area.size.burned$`Area (hectares)` > quantile(Area.size.burned$`Area (hectares)`, 0.99, na.rm = TRUE), ]
+
+plot(density(Area.size.burned$`Area (hectares)`, na.rm = TRUE), main = "Density Plot of Area Burned", xlab = "Area (hectares)")
+
+```
+```{r}
+summary(Number.of.fires.cause)
+summary(Number.of.fires.month)
+summary(Number.of.fires.size)
+```
+
+
+```{r}
+summary(Area.burned.Fire.cause)
+summary(Area.size.burned)
+summary(Area.burned.month)
+summary(Number.of.fires.cause)
+summary(Number.of.fires.month)
+summary(Number.of.fires.size)
+summary(Property.losses.from.fires)
+```
+
+```{r}
+new_data3 <- data.frame(
+    Month = c("January", "February", "March", "April", "May", "June", "July", "August", 
+              "September", "October", "November", "December", "Unspecified"),
+    'Number' = c(1, 8, 40, 318, 858, 481, 1082, 1572, 506, 390, 97, 8, 289)
+)
+
+Number.of.fires.month_select <- Number.of.fires.month %>% select(Month, Number)
+combined_data3 <- rbind(Number.of.fires.month_select, new_data3)
+
+colnames(combined_data3)[2] <- "Number of Fires"
+
+monthly_avg <- combined_data3 %>%
+    group_by(Month) %>%
+    summarise(`Average Number of Fires` = mean(`Number of Fires`, na.rm = TRUE))
+
+month_levels <- c("January", "February", "March", "April", "May", "June", "July", "August",
+                  "September", "October", "November", "December", "Unspecified")
+monthly_avg$Month <- factor(monthly_avg$Month, levels = month_levels)
+
+monthly_avg <- monthly_avg %>% arrange(Month)
+
+ggplot(monthly_avg, aes(x = Month, y = `Average Number of Fires`)) +
+    geom_bar(stat = "identity", fill = "red", color = "black") +
+    theme_minimal() +
+    labs(
+        title = "Average Number of Fires per Month",
+        x = "Month",
+        y = "Average Number of Fires"
+    ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dashed"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    )
+
+```
+
+```{r}
+yearly_trend <- aggregate(`Area (hectares)` ~ Year, data = Area.size.burned, sum, na.rm = TRUE)
+
+new_data_line <- data.frame(
+    Year = c(2022, 2023),
+    `Area (hectares)` = c(1585082, 17197201)
+)
+
+colnames(new_data_line)[2] <- "Area (hectares)"
+
+yearly_trend_combined <- rbind(yearly_trend, new_data_line)
+
+yearly_trend_combined$Year <- as.numeric(as.character(yearly_trend_combined$Year))
+
+ggplot(yearly_trend_combined, aes(x = Year, y = `Area (hectares)`)) +
+    geom_line(color = "blue", size = 1.2) + 
+    geom_point(color = "blue", size = 3) +  
+    ggtitle("Total Area Burned Over Years") +
+    xlab("Year") +
+    ylab("Total Area (hectares)") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    scale_y_continuous(labels = scales::comma) 
+
+
+```
+
+```{r}
+smoothed_area <- stats::filter(yearly_trend_combined$`Area (hectares)`, filter = rep(1/7, 7), sides = 2)
+
+yearly_trend_combined$Smoothed_Area <- smoothed_area
+
+ggplot(yearly_trend_combined, aes(x = Year)) +
+    geom_line(aes(y = Smoothed_Area, color = "Smoothed Trend"), size = 1.2, na.rm = TRUE) +
+    geom_line(aes(y = `Area (hectares)`, color = "Actual Data"), size = 1) +
+    geom_point(aes(y = `Area (hectares)`, color = "Actual Data"), size = 3) +
+    geom_smooth(aes(y = `Area (hectares)`, color = "Trend Line"), method = "lm", se = FALSE, linetype = "dashed", size = 1.5) +
+    ggtitle("Total Area Burned Over Years with Trend Line") +
+    xlab("Year") +
+    ylab("Total Area (hectares)") +
+    theme_minimal() +
+  labs(color = "Line Types")+ 
+    theme(
+        axis.text.x = element_text(size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1)
+    ) +
+    scale_y_continuous(labels = scales::comma) +
+    scale_color_manual(values = c("Smoothed Trend" = "orange", "Actual Data" = "blue", "Trend Line" = "red"))
+
+```
+
+```{r}
+
+yearly_trend_month <- aggregate(Number ~ Year, data = Number.of.fires.month, sum, na.rm = TRUE)
+
+new_fires_data <- data.frame(
+    Year = c(2022, 2023),
+    Number = c(5653, 6811)
+)
+
+yearly_trend_month_combined <- rbind(yearly_trend_month, new_fires_data)
+
+yearly_trend_month_combined$Year <- as.numeric(as.character(yearly_trend_month_combined$Year))
+
+ggplot(yearly_trend_month_combined, aes(x = Year, y = Number)) +
+    geom_line(color = "red", size = 1.2) + 
+    geom_point(color = "red", size = 3) +  
+    ggtitle("Total Fires Over Years") +
+    xlab("Year") +
+    ylab("Number of Fires") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(size = 10, face = "bold"), 
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    scale_y_continuous(labels = scales::comma) 
+
+```
+
+
+```{r}
+province_counts <- table(Area.size.burned$Province)
+barplot(province_counts, col = "lightgreen", main = "Number of Fires by Province", las = 2)
+
+```
+
+
+```{r}
+summary(Property.losses.from.fires)
+
+```
+
+```{r}
+missing_values <- sapply(Property.losses.from.fires, function(x) sum(is.na(x)))
+missing_values
+```
+```{r}
+hist(Property.losses.from.fires$`Dollars (En)`, breaks = 50, col = "lightblue", main = "Distribution of Property Losses", xlab = "Dollars")
+```
+```{r}
+table(Property.losses.from.fires$Province)
+barplot(table(Property.losses.from.fires$Province), col = "lightgreen", main = "Number of Entries by Province", las = 2)
+```
+```{r}
+yearly_losses <- aggregate(`Dollars (En)` ~ Year, data = Property.losses.from.fires, sum, na.rm = TRUE)
+
+yearly_losses$Year <- as.numeric(as.character(yearly_losses$Year))
+
+yearly_losses$`Dollars (millions)` <- yearly_losses$`Dollars (En)` / 1e6
+
+ggplot(yearly_losses, aes(x = Year, y = `Dollars (millions)`)) +
+    geom_line(color = "blue", size = 1.2) + 
+    geom_point(color = "blue", size = 3) +  
+    ggtitle("Total Property Losses Over Years (in Millions of Dollars)") +
+    xlab("Year") +
+    ylab("Total Property Losses (Millions of Dollars)") +
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(size = 10, face = "bold"),
+        axis.text.y = element_text(size = 10, face = "bold"), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"),
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    scale_y_continuous(labels = scales::comma_format(suffix = "M")) 
+
+```
+
+
+
+```{r}
+library(readxl)
+fp_historical_wildfire_data_2006_2023 <- read_excel("~/Downloads/fp-historical-wildfire-data-2006-2023.xlsx")
+colnames(fp_historical_wildfire_data_2006_2023)
+
+historical_wildfire_data <- fp_historical_wildfire_data_2006_2023[,c(1,8,9, 50)] %>% filter( fire_year == 2023)
+str(historical_wildfire_data)
+
+colnames(historical_wildfire_data)[1] <- "Year"
+historical_wildfire_data$Year<- as.factor(historical_wildfire_data$Year)
+colnames(historical_wildfire_data)[2] <- "Origin"
+historical_wildfire_data$Origin<- as.factor(historical_wildfire_data$Origin)
+colnames(historical_wildfire_data)[3] <- "Cause"
+historical_wildfire_data$Cause<- as.factor(historical_wildfire_data$Cause)
+
+colnames(historical_wildfire_data)[4] <- "Hectares burned"
+
+table(historical_wildfire_data$Cause)
+
+table(Area.burned.Fire.cause$Cause)
+
+
+```
+
+```{r}
+historical_wildfire_data_replaced <- historical_wildfire_data %>%
+    mutate(Cause = case_when(
+        Cause %in% c("Agriculture Industry", "Forest Industry", "Government", 
+                     "Incendiary", "Oil & Gas Industry", "Other Industry", 
+                     "Power Line Industry", "Railroad", "Recreation", "Resident") ~ "Human activity",
+        Cause == "Lightning" ~ "Lightning",
+        Cause %in% c("Under Investigation", "Undetermined") ~ "Unspecified",
+        TRUE ~ Cause 
+    ))
+
+table(historical_wildfire_data_replaced$Cause)
+str(historical_wildfire_data_replaced)
+```
+```{r}
+cause_summary <- historical_wildfire_data_replaced %>%
+    group_by(Cause) %>%
+    summarise(Total_Hectares_Burned = sum(`Hectares burned`, na.rm = TRUE)) %>%
+    arrange(desc(Total_Hectares_Burned))
+
+ggplot(cause_summary, aes(x = reorder(Cause, -Total_Hectares_Burned), y = Total_Hectares_Burned / 1e6)) +
+    geom_bar(stat = "identity", fill = "orange", color = "black", width = 0.7) + 
+    theme_minimal() +
+    labs(
+        title = "Total Hectares Burned by Cause (in 2023)",
+        x = "Cause",
+        y = "Total Hectares Burned (Millions)"
+    ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+        axis.text.y = element_text(size = 12, face = "bold"), 
+        axis.title.x = element_text(size = 14, face = "bold"), 
+        axis.title.y = element_text(size = 14, face = "bold"), 
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5), 
+        panel.grid.major = element_line(color = "gray80", linetype = "dashed"), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1) 
+    ) +
+    geom_text(aes(label = round(Total_Hectares_Burned / 1e6, 2)), vjust = -0.3, size = 4, fontface = "bold") 
+
+
+```
+```{r}
+
+total_area_burned <- aggregate(`Area (hectares)` ~ Year, data = Area.size.burned, sum, na.rm = TRUE)
+total_number_of_fires <- aggregate(Number ~ Year, data = Number.of.fires.month, sum, na.rm = TRUE)
+total_property_loss <- aggregate(`Dollars (En)` ~ Year, data = Property.losses.from.fires, sum, na.rm = TRUE)
+
+colnames(total_area_burned) <- c("Year", "Total_Area_Burned")
+colnames(total_number_of_fires) <- c("Year", "Total_Number_of_Fires")
+colnames(total_property_loss) <- c("Year", "Total_Property_Loss")
+
+combined_data <- merge(total_area_burned, total_number_of_fires, by = "Year", all = TRUE)
+combined_data <- merge(combined_data, total_property_loss, by = "Year", all = TRUE)
+
+combined_data[is.na(combined_data)] <- 0
+
+print(combined_data)
+
+
+correlation_matrix <- cor(combined_data[, -1], use = "complete.obs")
+
+melted_corr <- melt(correlation_matrix)
+
+ggplot(melted_corr, aes(x = Var1, y = Var2, fill = value)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+    geom_text(aes(label = round(value, 2)), size = 4) +
+    theme_minimal() +
+    labs(
+        title = "Correlation Heatmap",
+        x = "",
+        y = ""
+    ) +
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+    )
+
+```
+
+
+
+```{r}
+ggplot(Area.burned.month, aes(x = Province, y = `Area (hectares)`, fill = Province)) +
+    geom_boxplot() +
+    theme_minimal() +
+    labs(
+        title = "Boxplot of Area Burned by Province",
+        x = "Province",
+        y = "Area Burned (hectares)"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_brewer(palette = "Set3")
+```
+
+```{r}
+extracted_data <- Area.size.burned[, c("Year", "Area (hectares)")]
+
+new_data1 <- data.frame(
+    Year = c(2022, 2022, 2022, 2022, 2023),
+    `Area (hectares)` = c(1062 + 22293 + 3809 + 144 + 59 + 3357 +2288 + 19246 +13287, 
+                          142593 + 112840 + 187968 + 2 + 603950 + 1 + 270 + 10393 + 252286, 
+                          6791 + 391 + 329 + 1 + 76 + 40 + 10, 
+                          7101 + 102 + 1 + 30 + 23890 + 23 + 25 + 68 + 170357, 
+                          1951299 + 2840830 + 189913 + 854 + 21913 + 4163438 + 25093 + 441474 + 1014742 + 8 + 4322888 + 1850829 + 373920)
+)
+
+colnames(new_data1) <- colnames(extracted_data)
+Area.burned.Fire.cause1 <- rbind(extracted_data, new_data1)
+
+yearly_burned_area <- aggregate(`Area (hectares)` ~ Year, data = Area.burned.Fire.cause1, sum, na.rm = TRUE)
+yearly_burned_area$Year <- as.numeric(as.character(yearly_burned_area$Year))
+
+new_data4 <- data.frame(
+    Year = 2024,
+    `Area (hectares)` = 5322087
+)
+colnames(new_data4)[2] <- "Area (hectares)"
+
+yearly_burned_area_combined <- rbind(yearly_burned_area, new_data4)
+
+
+
+area_burned_ts <- ts(yearly_burned_area_combined$`Area (hectares)`, start = min(yearly_burned_area_combined$Year), frequency = 1)
+fit <- auto.arima(area_burned_ts)
+
+forecast_area <- forecast(fit, h = 5)
+
+forecast_df <- data.frame(
+    Year = as.numeric(time(forecast_area$mean)),
+    Forecast = as.numeric(forecast_area$mean),
+    Lower_95 = as.numeric(forecast_area$lower[, 2]),
+    Upper_95 = as.numeric(forecast_area$upper[, 2])
+)
+
+original_data <- data.frame(
+    Year = yearly_burned_area$Year,
+    Area_Burned = yearly_burned_area$`Area (hectares)`
+)
+new_data_combined <- data.frame(
+    Year = 2024,
+    Area_Burned = 5322087
+)
+
+ggplot() +
+    geom_line(data = original_data, aes(x = Year, y = Area_Burned / 1e6), color = "orange", size = 1.2) +
+    geom_point(data = new_data_combined, aes(x = Year, y = Area_Burned / 1e6), color = "red", size = 3, shape = 18) + 
+    geom_line(data = forecast_df, aes(x = Year, y = Forecast / 1e6), color = "blue", linetype = "dashed", size = 1.2) +
+    geom_ribbon(data = forecast_df, aes(x = Year, ymin = Lower_95 / 1e6, ymax = Upper_95 / 1e6), fill = "lightblue", alpha = 0.3) +
+    ggtitle("Forecast of Total Area Burned Over Next 5 Years with 2024 Data Point") +
+    xlab("Year") +
+    ylab("Total Area (Millions of Hectares)") +
+    theme_minimal() +
+    theme(
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1),      
+        axis.text.x = element_text(size = 14, face = "bold"), 
+        axis.text.y = element_text(size = 14, face = "bold"), 
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+    ) +
+    scale_y_continuous(labels = scales::comma_format(suffix = "M"))
+
+```
+
+```{r}
+extracted_data <- Area.size.burned[, c("Year", "Area (hectares)")]
+new_data1 <- data.frame(
+    Year = c(2022, 2023),
+    `Area (hectares)` = c(
+        1062 + 22293 + 3809 + 144 + 59 + 3357 + 2288 + 19246 + 13287 + 
+        142593 + 112840 + 187968 + 2 + 603950 + 1 + 270 + 10393 + 252286 + 
+        6791 + 391 + 329 + 1 + 76 + 40 + 10 + 
+        7101 + 102 + 1 + 30 + 23890 + 23 + 25 + 68 + 170357, 
+        1951299 + 2840830 + 189913 + 854 + 21913 + 4163438 + 25093 + 
+        441474 + 1014742 + 8 + 4322888 + 1850829 + 373920
+    )
+)
+
+colnames(new_data1) <- colnames(extracted_data)
+
+Area.burned.Fire.cause1 <- rbind(extracted_data, new_data1)
+
+yearly_burned_area <- aggregate(`Area (hectares)` ~ Year, data = Area.burned.Fire.cause1, sum, na.rm = TRUE)
+yearly_burned_area$Year <- as.numeric(as.character(yearly_burned_area$Year))
+
+head(yearly_burned_area)
+new_data4 <- data.frame(
+    Year = 2024,
+    `Area (hectares)` = 5322087
+)
+colnames(new_data4)[2] <- "Area (hectares)"
+
+yearly_burned_area_combined <- rbind(yearly_burned_area, new_data4)
+
+area_burned_ts <- ts(yearly_burned_area_combined$`Area (hectares)`, start = min(yearly_burned_area_combined$Year), frequency = 1)
+fit <- auto.arima(area_burned_ts)
+
+forecast_area <- forecast(fit, h = 5)
+
+forecast_df <- data.frame(
+    Year = as.numeric(time(forecast_area$mean)),
+    Forecast = as.numeric(forecast_area$mean),
+    Lower_95 = as.numeric(forecast_area$lower[, 2]),
+    Upper_95 = as.numeric(forecast_area$upper[, 2])
+)
+
+original_data <- data.frame(
+    Year = yearly_burned_area$Year,
+    Area_Burned = yearly_burned_area$`Area (hectares)`
+)
+
+new_data_combined <- data.frame(
+    Year = 2024,
+    Area_Burned = 5322087
+)
+
+ggplot() +
+    geom_line(data = original_data, aes(x = Year, y = Area_Burned / 1e6), color = "orange", size = 1.2) +
+    geom_point(data = new_data_combined, aes(x = Year, y = Area_Burned / 1e6), color = "red", size = 3, shape = 18) + 
+    geom_line(data = forecast_df, aes(x = Year, y = Forecast / 1e6), color = "blue", linetype = "dashed", size = 1.2) +
+    geom_ribbon(data = forecast_df, aes(x = Year, ymin = Lower_95 / 1e6, ymax = Upper_95 / 1e6), fill = "lightblue", alpha = 0.3) +
+    ggtitle("Forecast of Total Area Burned Over Next 5 Years with 2024 Data Point") +
+    xlab("Year") +
+    ylab("Total Area (Millions of Hectares)") +
+    theme_minimal() +
+    theme(
+        panel.grid.major = element_line(color = "gray80", linetype = "dotted"), 
+        panel.border = element_rect(color = "black", fill = NA, size = 1),      
+        axis.text.x = element_text(size = 14, face = "bold"), 
+        axis.text.y = element_text(size = 14, face = "bold"), 
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+    ) +
+    scale_y_continuous(labels = scales::comma_format(suffix = "M"))
+
+```
+
+
+
+
+
