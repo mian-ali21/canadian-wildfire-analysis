@@ -60,4 +60,5 @@ canadian-wildfire-analysis/
 
 **Author**
 Mian Ahsan Ali
+
 LinkedIn: https://www.linkedin.com/in/ali-021-025-mian
