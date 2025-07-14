@@ -36,16 +36,12 @@ The work is inspired by ongoing debates around the role of climate change in wil
 
 **Project Structure**
 canadian-wildfire-analysis/
+
 ├── notebooks/ 
-
 │   └── wildfire-analysis.Rmd
-
 ├── report/ 
-
 │   └── Canadian-Wildfire-Analysis-Report.docx 
-
 ├── requirements.txt 
-
 └── README.md
 
 **Data Sources**
